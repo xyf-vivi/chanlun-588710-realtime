@@ -5,3 +5,8 @@
 !realtime_server.py
 !chanlun_realtime.html
 !chanpy_data_5level.json
+!chan_format.py
+!validate_analysis.py
+!import_analysis.py
+!sample_external_analysis.json
+!ANALYSIS_FORMAT.md

@@ -1,0 +1,65 @@
+{
+  "symbol": "588710",
+  "source": "example-model",
+  "levels": {
+    "daily": {
+      "bars": [
+        {"time": "2026-07-03", "open": 3.69, "high": 3.74, "low": 3.65, "close": 3.70},
+        {"time": "2026-07-04", "open": 3.70, "high": 3.72, "low": 3.66, "close": 3.68},
+        {"time": "2026-07-07", "open": 3.58, "high": 3.839, "low": 3.58, "close": 3.815}
+      ],
+      "chan": {
+        "bis": [
+          {"direction": "up", "is_sure": true, "start_time": "2026-07-03", "end_time": "2026-07-07", "start_value": 3.69, "end_value": 3.815}
+        ],
+        "segs": [
+          {"direction": "up", "is_sure": true, "start_time": "2026-07-03", "end_time": "2026-07-07", "start_value": 3.69, "end_value": 3.815}
+        ],
+        "zss": [
+          {"is_sure": false, "start_time": "2026-07-04", "end_time": "2026-07-07", "low": 3.58, "high": 3.839}
+        ],
+        "bsps": [
+          {"is_buy": true, "types": ["1"], "time": "2026-07-03", "value": 3.69, "bi_idx": 0}
+        ]
+      }
+    },
+    "30min": {
+      "bars": [
+        {"time": "2026-07-07 14:30", "open": 3.80, "high": 3.81, "low": 3.79, "close": 3.805},
+        {"time": "2026-07-07 15:00", "open": 3.805, "high": 3.815, "low": 3.80, "close": 3.815}
+      ],
+      "chan": {"bis": [], "segs": [], "zss": [], "bsps": []}
+    },
+    "15min": {
+      "bars": [
+        {"time": "2026-07-07 14:45", "open": 3.805, "high": 3.81, "low": 3.80, "close": 3.808},
+        {"time": "2026-07-07 15:00", "open": 3.808, "high": 3.815, "low": 3.805, "close": 3.815}
+      ],
+      "chan": {"bis": [], "segs": [], "zss": [], "bsps": []}
+    },
+    "5min": {
+      "bars": [
+        {"time": "2026-07-07 14:55", "open": 3.81, "high": 3.813, "low": 3.808, "close": 3.812},
+        {"time": "2026-07-07 15:00", "open": 3.812, "high": 3.815, "low": 3.811, "close": 3.815}
+      ],
+      "chan": {"bis": [], "segs": [], "zss": [], "bsps": []}
+    },
+    "1min": {
+      "bars": [
+        {"time": "2026-07-07 14:58", "open": 3.812, "high": 3.814, "low": 3.811, "close": 3.813},
+        {"time": "2026-07-07 14:59", "open": 3.813, "high": 3.814, "low": 3.812, "close": 3.813},
+        {"time": "2026-07-07 15:00", "open": 3.813, "high": 3.815, "low": 3.812, "close": 3.815}
+      ],
+      "chan": {
+        "bis": [
+          {"direction": "up", "is_sure": true, "start_time": "2026-07-07 14:58", "end_time": "2026-07-07 15:00", "start_value": 3.813, "end_value": 3.815}
+        ],
+        "segs": [],
+        "zss": [],
+        "bsps": [
+          {"is_buy": true, "types": ["1"], "time": "2026-07-07 14:58", "value": 3.813, "bi_idx": 0}
+        ]
+      }
+    }
+  }
+}

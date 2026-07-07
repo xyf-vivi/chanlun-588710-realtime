@@ -46,6 +46,25 @@ _5level.json      _5level.json│  ?full=1 / 轻量  │
 | `/api/snapshot?full=1` | 全量：五级 bars + 缠论标注 + 实时价 + 操作建议（首屏加载用） |
 | `/api/snapshot` | 轻量：实时价 + 操作建议 + live_price（前端轮询用） |
 
+## 让其他模型跑缠论并导入看板
+
+看板的数据格式是固定的（五级 bars + 缠论标注）。任何模型 / 算法 / LLM 只要按
+[`ANALYSIS_FORMAT.md`](./ANALYSIS_FORMAT.md) 的契约输出 JSON，就能直接导入渲染，无需改前端。
+
+```bash
+# 校验模型输出是否符合契约（不改动文件）
+python validate_analysis.py 模型输出.json
+
+# 校验通过后导入：备份旧数据并写入 chanpy_data_5level.json
+python import_analysis.py 模型输出.json
+```
+
+导入后服务按文件修改时间自动重载，**无需重启**，浏览器刷新即见。
+参考范本：[`sample_external_analysis.json`](./sample_external_analysis.json)（五级最小可运行示例）。
+
+> 核心约束：每条笔/线段/中枢/买卖点的时间字段必须**精确等于** `bars` 中某根的 `time`
+> （如日线 `2026-07-07`、分钟线 `2026-07-07 15:00`），否则前端无法定位。
+
 ## 免责声明
 
 本项目仅用于缠论技术的学习与个人研究记录。所有信号均由历史 K 线结构推导，市场有风险，ETF 有波动，**内容不构成任何投资建议**。据此操作盈亏自负。
