@@ -480,6 +480,127 @@
     window.addEventListener('resize', resizeCanvas);
 
     // ---------- 实时数据 ----------
+    function fmtTencentTime(dateStr, timeStr) {
+      const d = (dateStr || '').replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3');
+      const t = (timeStr || '').padStart(6, '0');
+      return d + ' ' + t.slice(0, 2) + ':' + t.slice(2, 4) + ':' + t.slice(4, 6);
+    }
+    // 浏览器端直连腾讯行情（script 注入，无跨域限制）
+    function parseTencent(raw) {
+      const m = raw && raw.match(/v_sh\d+="([^"]*)"/);
+      if (!m || !m[1]) return null;
+      const f = m[1].split('~');
+      if (f.length < 35) return null;
+      const price = parseFloat(f[3]);
+      const prev = parseFloat(f[4]);
+      const open = parseFloat(f[5]);
+      const high = parseFloat(f[33]);
+      const low = parseFloat(f[34]);
+      const dateStr = f[30] || '';
+      const timeStr = f[31] || '';
+      const tt = parseInt(timeStr, 10);
+      const market_status = (tt >= 93000 && tt <= 150000) ? '盘中' : '已收盘';
+      const pct = prev ? (price - prev) / prev * 100 : 0;
+      return {
+        name: f[1] || '588710', price, prev_close: prev, open, high, low,
+        pct, date: dateStr, time: timeStr, market_status,
+        updated_at: fmtTencentTime(dateStr, timeStr),
+        data_freshness: dateStr.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3')
+      };
+    }
+    function fetchLivePrice() {
+      return new Promise((resolve) => {
+        const s = document.createElement('script');
+        let done = false;
+        const finish = () => {
+          if (done) return; done = true;
+          try { resolve(parseTencent(window.v_sh588710 || '')); }
+          catch (e) { resolve(null); }
+          s.onload = s.onerror = null; s.remove();
+        };
+        s.onload = finish;
+        s.onerror = () => { resolve(null); s.remove(); };
+        s.src = 'https://qt.gtimg.cn/q=sh588710';
+        document.head.appendChild(s);
+        setTimeout(finish, 2000);
+      });
+    }
+
+    // 客户端复刻后端「下一步操作建议」逻辑（无后端时也能算）
+    function levelSignal(lv) {
+      const bars = lv.bars, ch = lv.chan;
+      const last = bars[bars.length - 1].close;
+      const bis = ch.bis || [], zss = ch.zss || [], bsps = ch.bsps || [];
+      const last_bi = bis.length ? bis[bis.length - 1] : null;
+      const last_zs = zss.length ? zss[zss.length - 1] : null;
+      const direction = last_bi ? last_bi.direction : 'side';
+      let trend_up = false, trend_down = false;
+      if (bis.length >= 2) {
+        const a = bis[bis.length - 2], b = bis[bis.length - 1];
+        trend_up = (b.end_value > a.end_value) && (b.start_value > a.start_value);
+        trend_down = (b.end_value < a.end_value) && (b.start_value < a.start_value);
+      }
+      let pos = 'none';
+      if (last_zs) {
+        if (last > last_zs.high) pos = 'above';
+        else if (last < last_zs.low) pos = 'below';
+        else pos = 'inside';
+      }
+      let recent = null;
+      if (bsps.length) {
+        recent = Object.assign({}, bsps[bsps.length - 1]);
+        const cur_idx = last_bi ? last_bi.idx : 0;
+        recent.active = (recent.bi_idx || 0) >= cur_idx - 3;
+      }
+      return { last, direction, trend_up, trend_down, pos,
+        zs: last_zs ? [last_zs.low, last_zs.high] : null, recent };
+    }
+    function biasOf(grp) {
+      const up = grp.some(x => x.trend_up || (x.direction === 'up' && ['above', 'inside'].includes(x.pos)));
+      const down = grp.some(x => x.trend_down || (x.direction === 'down' && ['below', 'inside'].includes(x.pos)));
+      if (up && !down) return '偏多';
+      if (down && !up) return '偏空';
+      return '震荡';
+    }
+    function computeSuggestionClient(data, quote) {
+      const levels = (data && data.levels) || {};
+      const order = ['daily', '30min', '15min', '5min', '1min'];
+      const sigs = {};
+      for (const lv of order) if (levels[lv]) sigs[lv] = levelSignal(levels[lv]);
+      const big = ['daily', '30min'].filter(k => sigs[k]).map(k => sigs[k]);
+      const small = ['5min', '1min'].filter(k => sigs[k]).map(k => sigs[k]);
+      const big_bias = big.length ? biasOf(big) : '震荡';
+      let small_bsp = null;
+      for (const x of small) { if (x.recent && x.recent.active) { small_bsp = x.recent; break; } }
+      const pos_word = { above: '中枢上方（强势区）', below: '中枢下方（弱势区）', inside: '中枢内部（震荡区）', none: '暂无中枢参考' };
+      const bullets = [];
+      const b0 = big[0];
+      if (b0) bullets.push(`大级别（日线/30分）整体${big_bias}，现价落在${pos_word[b0.pos] || ''}。`);
+      else bullets.push(`大级别方向：${big_bias}。`);
+      if (small_bsp) {
+        const kind = small_bsp.is_buy ? '买点' : '卖点';
+        const word = small_bsp.is_buy ? '低吸' : '减仓/止盈';
+        bullets.push(`小级别（5分/1分）刚出现${kind}信号 ${small_bsp.types.join(',')}（${small_bsp.value.toFixed(3)}），是短线${word}的参考位置。`);
+      } else bullets.push('小级别（5分/1分）暂无新的买卖点，继续观察，不急着动。');
+      if (quote) {
+        const pct = quote.pct || 0;
+        const arrow = pct > 0 ? '涨' : (pct < 0 ? '跌' : '平');
+        bullets.push(`现价 ¥${quote.price.toFixed(3)}（${arrow} ${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%），数据为${big_bias}背景下的实时报价。`);
+      }
+      let action = '';
+      if (big_bias === '偏多' && small_bsp && small_bsp.is_buy) action = '大方向没问题，小级别回踩给了上车机会——可分批低吸，别一把梭。';
+      else if (big_bias === '偏多' && small_bsp && !small_bsp.is_buy) action = '大方向偏多但短线冲高出现卖点，仓位重的先落袋一部分，留底仓跟随。';
+      else if (big_bias === '偏多') action = '还在上涨段、没到卖点，拿住即可；但别追高加仓。';
+      else if (big_bias === '偏空' && small_bsp && small_bsp.is_buy) action = '大级别还在探底，小级别买点只当反弹看，轻仓试探，破位就走。';
+      else if (big_bias === '偏空' && small_bsp && !small_bsp.is_buy) action = '顺势减仓，别接飞刀，等止跌信号再说。';
+      else if (big_bias === '偏空') action = '弱势震荡，观望为主，等出现止跌买点再考虑。';
+      else action = '多空胶着，箱体里高抛低吸或干脆不动，等方向明朗。';
+      bullets.push('操作参考：' + action);
+      const risk = '缠论是技术参考，不是买卖指令。ETF 有波动风险，以上仅为基于历史结构的个人研究记录，不构成投资建议。';
+      return { bias: big_bias, action, bullets, risk };
+    }
+
+    // 后端优先的更新（仅本地/后端部署生效）
     function updateTicker(snap) {
       const q = snap.quote;
       const st = document.getElementById('mStatus');
@@ -517,6 +638,42 @@
       updateTicker(snap); updateSuggestion(snap);
       if (state.level) draw();
     }
+
+    // 浏览器端实时价驱动（任何部署都生效，包括纯静态）
+    function applyLivePrice(quote) {
+      if (!quote) return;
+      livePrice = quote.price;
+      if (DATA && DATA.levels['1min']) {
+        const b = DATA.levels['1min'].bars;
+        const last = b[b.length - 1];
+        last.close = livePrice;
+        if (livePrice > last.high) last.high = livePrice;
+        if (livePrice < last.low) last.low = livePrice;
+      }
+      const st = document.getElementById('mStatus');
+      st.textContent = quote.market_status;
+      st.className = 'badge' + (quote.market_status === '盘中' ? ' on' : '');
+      document.getElementById('mUpdated').innerHTML = '<span class="live-dot"></span>实时数据更新于 ' + quote.updated_at;
+      document.getElementById('mFresh').textContent = 'K线结构全量刷新: ' + (SNAP ? SNAP.data_freshness : '--') + ' ｜ 实时价: 腾讯行情(浏览器直连)';
+      const up = quote.pct >= 0; const color = up ? getCss('--up') : getCss('--down');
+      const pe = document.getElementById('mPrice'); pe.textContent = quote.price.toFixed(3); pe.style.color = color;
+      const ce = document.getElementById('mPct'); ce.textContent = (up ? '+' : '') + quote.pct.toFixed(2) + '%'; ce.style.color = color;
+      document.getElementById('mName').textContent = quote.name + ' (' + SYMBOL + '.SH)';
+      document.getElementById('mOHL').textContent = `开 ${quote.open.toFixed(3)}  高 ${quote.high.toFixed(3)}  低 ${quote.low.toFixed(3)}  昨收 ${quote.prev_close.toFixed(3)}`;
+      document.getElementById('mTime').textContent = fmtTencentTime(quote.date, quote.time);
+      const s = computeSuggestionClient(DATA, quote);
+      const be = document.getElementById('sBias');
+      be.textContent = s.bias;
+      be.className = 'bias ' + (s.bias === '偏多' ? 'bull' : (s.bias === '偏空' ? 'bear' : 'flat'));
+      document.getElementById('sBullets').innerHTML = (s.bullets || []).map(t => `<li>${t}</li>`).join('');
+      document.getElementById('sRisk').textContent = s.risk || '';
+      if (state.level) draw();
+    }
+    async function tickLive() {
+      const q = await fetchLivePrice();
+      if (q && q.price > 0) applyLivePrice(q);
+    }
+
     let LIVE = true;
     function buildStaticSnap(data) {
       let fresh = '';
@@ -531,10 +688,7 @@
         market_status: '静态快照', updated_at: fresh, data_freshness: fresh,
         suggestion: {
           bias: '—',
-          bullets: [
-            '当前为静态快照：数据截至 ' + fresh + '，无实时报价。',
-            '要实时跳动与操作建议，请本地运行 realtime_server.py，或部署到支持 Python 的平台。'
-          ],
+          bullets: ['K线结构为快照（截至 ' + fresh + '），正在通过浏览器直连腾讯行情获取实时价…'],
           risk: '本看板为缠论结构可视化，所有信号仅供学习研究，不构成投资建议。'
         }
       };
@@ -576,6 +730,9 @@
       renderTabs();
       applyLive(snap);
       resizeCanvas();
+      // 浏览器端实时价：任何部署都跑，纯静态也能实时
+      tickLive();
+      setInterval(tickLive, 3000);
       if (LIVE) setInterval(poll, 3000);
     }
     init();
