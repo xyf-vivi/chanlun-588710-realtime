@@ -1,0 +1,7 @@
+# 默认忽略项目目录里的其它文件（本仓库只发布「实时看板」）
+*
+!.gitignore
+!README.md
+!realtime_server.py
+!chanlun_realtime.html
+!chanpy_data_5level.json
