@@ -74,7 +74,7 @@
     .meta { color: var(--muted); font-size: 12px; margin-top: 6px; }
 
     /* 操作建议面板（结尾） */
-    .suggest { margin: 14px 16px 26px; background: var(--panel); border: 1px solid #d9dee7; border-radius: 10px; padding: 18px 20px; }
+    .suggest { margin: 0 0 18px; background: var(--panel); border: 1px solid #d9dee7; border-radius: 10px; padding: 16px 18px; }
     .suggest h2 { font-size: 17px; margin: 0 0 12px; display: flex; align-items: center; gap: 10px; }
     .bias { font-size: 13px; font-weight: 700; padding: 4px 12px; border-radius: 999px; }
     .bias.bull { background: #fef3f2; color: var(--up); border: 1px solid #fecdca; }
@@ -135,16 +135,15 @@
 
       <div class="meta" id="mFresh">K线结构全量刷新: -- ｜ 实时价: 新浪财经(每3秒)</div>
       <div class="meta" id="mUpdated"><span class="live-dot"></span>等待实时数据…</div>
+    </main>
 
-      <!-- 结尾：下一步操作建议 -->
+    <aside>
+      <!-- 下一步操作建议（已移至右侧栏顶部） -->
       <section class="suggest">
         <h2>下一步操作建议 <span class="bias flat" id="sBias">--</span></h2>
         <ul id="sBullets"><li>加载中…</li></ul>
         <div class="risk" id="sRisk"></div>
       </section>
-    </main>
-
-    <aside>
       <h2 class="panel-title" id="sideTitle">结构摘要</h2>
       <div class="stat-grid" id="stats"></div>
       <div class="legend">
