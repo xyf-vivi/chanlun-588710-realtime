@@ -517,6 +517,37 @@
       updateTicker(snap); updateSuggestion(snap);
       if (state.level) draw();
     }
+    let LIVE = true;
+    function buildStaticSnap(data) {
+      let fresh = '';
+      const lv = data.levels || {};
+      for (const k of ['daily', '30min', '15min', '5min', '1min']) {
+        const b = lv[k] && lv[k].bars;
+        if (b && b.length) fresh = String(b[b.length - 1].time).slice(0, 10);
+      }
+      return {
+        symbol: data.symbol, source: data.source, levels: data.levels,
+        live_price: null, quote: null,
+        market_status: '静态快照', updated_at: fresh, data_freshness: fresh,
+        suggestion: {
+          bias: '—',
+          bullets: [
+            '当前为静态快照：数据截至 ' + fresh + '，无实时报价。',
+            '要实时跳动与操作建议，请本地运行 realtime_server.py，或部署到支持 Python 的平台。'
+          ],
+          risk: '本看板为缠论结构可视化，所有信号仅供学习研究，不构成投资建议。'
+        }
+      };
+    }
+    async function loadFull() {
+      try {
+        const snap = await fetch('/api/snapshot?full=1').then(r => r.json());
+        LIVE = true; return snap;
+      } catch (e) {
+        const data = await fetch('./chanpy_data_5level.json').then(r => r.json());
+        LIVE = false; return buildStaticSnap(data);
+      }
+    }
     async function poll() {
       try {
         const snap = await fetch('/api/snapshot').then(r => r.json());
@@ -525,7 +556,7 @@
     }
     async function refreshStructure() {
       try {
-        const snap = await fetch('/api/snapshot?full=1').then(r => r.json());
+        const snap = await loadFull();
         SNAP = snap;
         DATA = { symbol: snap.symbol, source: snap.source, levels: snap.levels };
         levels = ['daily', '30min', '15min', '5min', '1min'].filter(l => DATA.levels[l]);
@@ -535,7 +566,7 @@
       } catch (e) {}
     }
     async function init() {
-      const snap = await fetch('/api/snapshot?full=1').then(r => r.json());
+      const snap = await loadFull();
       SNAP = snap;
       DATA = { symbol: snap.symbol, source: snap.source, levels: snap.levels };
       levels = ['daily', '30min', '15min', '5min', '1min'].filter(l => DATA.levels[l]);
@@ -545,7 +576,7 @@
       renderTabs();
       applyLive(snap);
       resizeCanvas();
-      setInterval(poll, 3000);
+      if (LIVE) setInterval(poll, 3000);
     }
     init();
   </script>

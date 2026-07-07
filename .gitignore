@@ -1,12 +1,10 @@
-# 默认忽略项目目录里的其它文件（本仓库只发布「实时看板」）
+# 默认忽略项目目录里的其它文件（本仓库只发布「实时看板」及其部署配置）
 *
 !.gitignore
 !README.md
 !realtime_server.py
 !chanlun_realtime.html
 !chanpy_data_5level.json
-!chan_format.py
-!validate_analysis.py
-!import_analysis.py
-!sample_external_analysis.json
-!ANALYSIS_FORMAT.md
+!Procfile
+!requirements.txt
+!render.yaml

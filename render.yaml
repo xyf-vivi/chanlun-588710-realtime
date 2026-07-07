@@ -1,0 +1,10 @@
+# Render.com 部署配置（一键从 GitHub 拉取本仓库，拿到实时公网 URL）
+# 部署步骤见 README「部署到云平台」章节。
+services:
+  - type: web
+    name: chanlun-588710-realtime
+    runtime: python
+    plan: free
+    startCommand: python realtime_server.py
+    # 服务会监听 $PORT（realtime_server.py 已通过 os.environ.get("PORT", 8899) 读取）
+    # 并绑定 0.0.0.0。免费实例闲置 15 分钟后会休眠，首次访问自动冷启动（约数秒）。

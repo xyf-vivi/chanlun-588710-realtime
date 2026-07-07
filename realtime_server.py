@@ -23,7 +23,7 @@ DATA_JSON = os.path.join(BASE, "chanpy_data_5level.json")
 HTML_FILE = os.path.join(BASE, "chanlun_realtime.html")
 SYMBOL = "588710"
 SINA_URL = "https://hq.sinajs.cn/list=sh588710"
-PORT = 8899
+PORT = int(os.environ.get("PORT", 8899))
 
 # ---------------- 数据缓存（缠论结构，文件变更自动重载） ----------------
 _data_cache = {"data": None, "mtime": 0.0, "freshness": ""}
@@ -314,8 +314,9 @@ def main():
     fetch_quote()
     t = threading.Thread(target=quote_loop, daemon=True)
     t.start()
-    server = ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
-    print(f"[OK] 实时看板服务已启动: http://127.0.0.1:{PORT}/")
+    HOST = os.environ.get("HOST", "0.0.0.0")
+    server = ThreadingHTTPServer((HOST, PORT), Handler)
+    print(f"[OK] 实时看板服务已启动: http://{HOST}:{PORT}/")
     print(f"[OK] 数据文件: {DATA_JSON}")
     try:
         server.serve_forever()
